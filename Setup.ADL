@@ -1,0 +1,412 @@
+Dim RT, howMany, howManyOrders, timeExpected 
+Dim booleanNode As Integer, realNode As Integer, integerNode As Integer, stringNode  As Integer
+Dim dlg As UserDialog
+
+Sub Main
+    ' ################################ Variable initialisation ##############################
+    defaultPeakWidth$  = "20"           'nm
+    defaultGratingPeriod$ = "6000"    'nm
+    defaultRangeStart$ = "500"          'nm
+    defaultRangeStop$ = "2500"        'nm
+    
+    defaultDetectorChange$  = "1050"    'nm
+    defaultGratingChange$  = "720"         'nm
+    defaultSourceChange$ = "320"          'nm
+    
+    defaultNIRSAT$ = "0.1"           's
+    defaultUVSAT$ = "0.1"            's
+    defaultNIRinterval$ = "4"          'nm
+    defaultUVinterval$ = "1"           'nm 
+    defaultNIRSBW$ = "4"             'nm
+    defaultUVSBW$ = "4"              'nm
+    
+    Dim Bmodes$(3)
+    Bmodes$(0) = "Single front"
+    Bmodes$(1) = "Single rear"
+    Bmodes$(2) = "Double Fixed Slit"
+    Bmodes$(3) = "Double Fixed Energy"
+    Dim Slits$(2)
+    Slits$(0) = "Full"
+    Slits$(1) = "Reduced"
+
+    CreateSettingNodes()
+    
+    ' ################################ Graphical user interface ##############################
+    ' if to be changed - rightmost button 'Edit UserDialog' button is recommended
+	Begin Dialog UserDialog 1060,518,"Settings" ' %GRID:10,7,1,1
+	    ' Slits, modes And polarisations
+		GroupBox 20,231,360,112,"UV-Vis",.GroupBox3
+		GroupBox 400,238,380,105,"NIR",.GroupBox4
+		GroupBox 20,14,1020,196,"General Settings",.GroupBox1
+		Text 40,70,90,14,"Y Mode",.Text2
+		CheckBox 120,70,40,14,"%R",.Reflect
+		CheckBox 170,70,90,14,"%T",.Trans
+		Text 40,42,90,14,"Beam mode",.Text3
+		Text 320,42,90,14,"Slit height",.Text4
+		DropListBox 140,42,150,70,BModes(),.DropListBMode
+		DropListBox 410,42,150,70,Slits(),.DropListSlits
+		Text 600,42,100,14,"Polarization:",.Text7
+		CheckBox 800,42,30,14,"S",.PolarS
+		CheckBox 870,42,30,14,"P",.PolarP
+		
+		Text 40,182,150,14,"Incident angles(deg):",.Text17
+		TextBox 360,182,40,14,.incAngle1
+		TextBox 440,182,40,14,.incAngle2
+		TextBox 520,182,40,14,.incAngle3
+		TextBox 600,182,40,14,.incAngle4
+		TextBox 680,182,40,14,.incAngle5
+		TextBox 760,182,40,14,.incAngle6
+		TextBox 840,182,40,14,.incAngle7
+		TextBox 290,182,40,14,.incAngle8
+		TextBox 220,182,40,14,.incAngle9
+		
+		' Scanning parameters
+		Text 40,259,90,14,"Ave time (s)",.Text5
+		Text 430,259,90,14,"Ave time (s)",.Text10
+		Text 40,287,160,14,"Data interval (nm)",.Text6
+		Text 430,287,160,14,"Data interval (nm)",.Text11
+		Text 40,315,90,14,"SBW (nm)",.Text8
+		Text 430,315,90,14,"SBW (nm)",.Text13
+		TextBox 200,259,90,14,.UVSAT
+		TextBox 600,259,90,14,.IRSAT
+		TextBox 600,287,90,14,.IRDtInter
+		TextBox 200,287,90,14,.UVDtInter
+		TextBox 200,315,90,14,.UVSBW
+		TextBox 600,315,90,14,.IRSBW
+		
+		' Default scanning parameters
+		Text 310,238,60,14,"Default",.Text12
+		Text 710,238,60,14,"Default",.Text20
+		Text 320,259,30,14,DefaultUVSAT$,.UVSATDef
+		Text 720,259,40,14,DefaultNIRSAT$,.IRSATDef
+		Text 720,287,30,14,"4",.IRDtInterDef
+		Text 720,315,30,14,"4",.IRSBWDef
+		Text 320,287,50,14,"1",.UVDtInterDef
+		Text 320,315,40,14,"4",.UVSBWDef
+		
+		' Diffraction specific scanning parameters
+		Text 40,154,150,14,"Start wavelength(nm):",.Text9
+		Text 40,119,180,14,"Detector changeover (nm):",.Text24
+		TextBox 220,154,80,14,.Startw
+		TextBox 220,119,80,14,.detector
+		Text 390,154,150,14,"Stop wavelength(nm):",.Text14
+		Text 390,119,170,14,"Source changeover (nm):",.Text27
+		Text 710,119,170,14,"Grating changeover (nm):",.Text29
+		TextBox 560,154,80,14,.Stopw
+		TextBox 560,119,80,14,.sourceChange
+		TextBox 900,119,80,14,.gratingChange
+		GroupBox 20,357,1020,98,"Grating parameters",.GroupBox36
+		CheckBox 650,413,60,14,"6th",.sixth
+		Text 40,385,160,14,"Grating period (microns)",.Text166
+		TextBox 230,385,90,14,.GrPeriod
+		TextBox 510,385,90,14,.PeakWdth
+		Text 40,413,230,14,"Diffraction orders to measure:",.Text96
+		CheckBox 270,413,60,14,"0th",.zeroth
+		CheckBox 340,413,50,14,"1st",.first
+		CheckBox 340,434,50,14,"-1st",.mfirst
+		CheckBox 400,413,60,14,"2nd",.second
+		CheckBox 400,434,60,14,"-2nd",.msecond
+		CheckBox 470,413,60,14,"3rd",.third
+		CheckBox 470,434,60,14,"-3rd",.mthird
+		CheckBox 530,413,60,14,"4th",.forth
+		CheckBox 530,434,60,14,"-4th",.mforth
+		CheckBox 590,413,60,14,"5th",.fifth
+		CheckBox 590,434,60,14,"-5th",.mfifth
+		CheckBox 650,434,60,14,"-6th",.msixth
+		CheckBox 700,434,60,14,"-7th",.mseventh
+		CheckBox 700,413,60,14,"7th",.seventh
+		Text 370,385,120,14,"Peak width (nm): ",.Text15
+
+		
+		' Default values For diffraction specific params
+		Text 630,371,60,14,"Default",.Text16
+		Text 320,371,60,14,"Default",.Text21
+		Text 630,385,50,14,defaultPeakWidth$,.Text26
+		Text 320,385,50,14,defaultGratingPeriod$,.Text32
+		Text 330,91,60,14,"Default",.Text18
+		Text 330,154,30,14,defaultRangeStart$,.Text19
+		Text 330,119,40,14,defaultDetectorChange$,.Text25
+		Text 660,154,50,14,defaultRangeStop$,.Text22
+		Text 660,119,50,14,defaultSourceChange$,.Text28
+		Text 1000,119,30,14,defaultGratingChange$,.Text31
+		Text 660,91,50,14,"Default",.Text23
+		Text 980,91,50,14,"Default",.Text30
+		
+		OKButton 640,476,90,21
+		CancelButton 830,476,90,21
+		GroupBox 20,462,510,49,"File",.GroupBox2
+		Text 40,483,140,14,"Measurement name:",.Text1
+		TextBox 190,483,330,14,.filename
+	End Dialog
+	
+	
+	' ################################ Setting parameter values ##############################
+	Dim dlg As UserDialog
+	Dialog dlg
+
+    CreateDiffractionOrdersNodes()
+    CreateIncidentAnglesNodes()
+   
+   ' save diffraction order preferences
+    Setval("Zeroth",CSng(dlg.zeroth)) 
+    Setval("First",CSng(dlg.first))
+    Setval("Second",CSng(dlg.second)) 
+    Setval("Third",CSng(dlg.third)) 
+    Setval("Fourth",CSng(dlg.forth)) 
+    Setval("Fifth",CSng(dlg.fifth)) 
+    Setval("Sixth",CSng(dlg.sixth)) 
+    Setval("Seventh",CSng(dlg.seventh)) 
+    Setval("mFirst",CSng(dlg.mfirst))
+    Setval("mSecond",CSng(dlg.msecond)) 
+    Setval("mThird",CSng(dlg.mthird)) 
+    Setval("mFourth",CSng(dlg.mforth)) 
+    Setval("mFifth",CSng(dlg.mfifth)) 
+    Setval("mSixth",CSng(dlg.msixth)) 
+    Setval("mSeventh",CSng(dlg.mseventh)) 
+    
+    'save incident angles preferences
+	If dlg.incAngle1 = "" Then Setval("First incidence",91)         Else Setval("First incidence",CSng(dlg.incAngle1)) 
+    If dlg.incAngle2 = "" Then Setval("Second incidence",91)   Else Setval("Second incidence",CSng(dlg.incAngle2))
+    If dlg.incAngle3 = "" Then Setval("Third incidence",91)        Else Setval("Third incidence",CSng(dlg.incAngle3)) 
+    If dlg.incAngle4 = "" Then Setval("Fourth incidence",91)      Else Setval("Fourth incidence",CSng(dlg.incAngle4)) 
+    If dlg.incAngle5 = "" Then Setval("Fifth incidence",91)         Else Setval("Fifth incidence",CSng(dlg.incAngle5))
+    If dlg.incAngle6 = "" Then Setval("Sixth incidence",91)        Else Setval("Sixth incidence",CSng(dlg.incAngle6)) 
+    If dlg.incAngle7 = "" Then Setval("Seventh incidence",91)  Else Setval("Seventh incidence",CSng(dlg.incAngle7)) 
+    If dlg.incAngle8 = "" Then Setval("Eighth incidence",91)       Else Setval("Eighth incidence",CSng(dlg.incAngle8)) 
+    If dlg.incAngle9 = "" Then Setval("Ninth incidence",91)       Else Setval("Ninth incidence",CSng(dlg.incAngle9))
+
+    'save general preferences
+	SetVal("Beam Mode", CSng(dlg.DropListBMode))
+	SetVal("Slit height", CSng(dlg.DropListSlits))
+	Setval("S-Polarization",CSng(dlg.PolarS)) 
+    Setval("P-Polarization",CSng(dlg.PolarP)) 
+    Setval("Reflectance",CSng(dlg.Reflect)) 
+    Setval("Transmittance", CSng(dlg.Trans))
+    If dlg.detector = ""             Then   SetVal("Detector changeover", CInt(defaultDetectorChange$))     Else  SetVal("Detector changeover", CSng(dlg.detector)) 
+    If dlg.sourceChange =  ""  Then   SetVal("Source changeover", CInt(defaultSourceChange$))          Else  SetVal("Source changeover", CSng(dlg.sourceChange)) 
+    If dlg.gratingChange =  ""  Then   SetVal("Grating changeover", CInt(defaultGratingChange$))          Else  SetVal("Grating changeover", CSng(dlg.gratingChange)) 
+    
+	'save UV-VIS NIR specific settings
+	If dlg.UVSBW = ""    Then  SetVal("UVVIS slit width", CSng(defaultUVSBW$))               Else  SetVal("UVVIS slit width", CSng(dlg.UVSBW)) 
+    If dlg.IRSBW = ""     Then  SetVal("NIR slit width", CSng(defaultNIRSBW$))                   Else  SetVal("NIR slit width", CSng(dlg.IRSBW))
+    If dlg.UVSAT = ""     Then  SetVal("UVVIS averaging",CSng(defaultUVSAT$)/0.033)     Else SetVal("UVVIS averaging", CSng(dlg.UVSAT)/0.033)
+    If dlg.IRSAT = ""       Then  SetVal("NIR averaging", CSng(defaultNIRSAT$)/0.033)      Else  SetVal("NIR averaging", CSng(dlg.IRSAT)/0.033)
+    If dlg.UVDtInter = "" Then SetVal("UVVIS interval", CSng(defaultUVinterval$))                Else  SetVal("UVVIS interval", CSng(dlg.UVDtInter))
+    If dlg.IRDtInter = ""   Then  SetVal("NIR interval", CSng(defaultNIRinterval$))                 Else SetVal("NIR interval", CSng(dlg.IRDtInter))
+    If dlg.Startw = ""        Then  SetVal("Range Start",CInt(defaultRangeStart$))                   Else  SetVal("Range Start", CSng(dlg.Startw))
+    If dlg.Stopw = ""        Then  SetVal("Range Stop",CInt(defaultRangeStop$))                   Else  SetVal("Range Stop", CSng(dlg.Stopw))
+    
+    'save grating specific settings
+    If dlg.GrPeriod = ""    Then  SetVal("Grating period", CDbl(defaultGratingPeriod$))           Else SetVal("Grating period", CDbl(dlg.GrPeriod))
+    If dlg.PeakWdth = "" Then  SetVal("Peak width",CInt(defaultPeakWidth$))                     Else  SetVal("Peak width", CSng(dlg.PeakWdth))
+    
+    DefaultingTransmissionReflexionPolarisation()
+    
+	CreateMeasurementDirectory(CStr(dlg.filename))
+
+    MeasureLengthVISNIR()
+    
+    PrinAndArchiveUserSettings()
+    
+End Sub
+
+Function CreateDiffractionOrdersNodes()
+    AddNode("Zeroth",booleanNode)
+	AddNode("First", booleanNode)
+	AddNode("Second", booleanNode)
+	AddNode("Third", booleanNode)
+	AddNode("Fourth", booleanNode)
+	AddNode("Fifth", booleanNode)
+	AddNode("Sixth", booleanNode)
+	AddNode("Seventh", booleanNode)
+	AddNode("mFirst", booleanNode)
+	AddNode("mSecond", booleanNode)
+	AddNode("mThird", booleanNode)
+	AddNode("mFourth", booleanNode)
+	AddNode("mFifth", booleanNode)
+	AddNode("mSixth", booleanNode)
+	AddNode("mSeventh", booleanNode)
+	AddNode("TR", stringNode)
+End Function
+
+Function CreateSettingNodes()
+    stringNode = 0
+    realNode = 1
+    integerNode = 2
+    booleanNode  = 6
+	AddNode("S-Polarization", booleanNode)   
+	AddNode("P-Polarization", booleanNode) 
+	AddNode("Reflectance", booleanNode) 
+	AddNode("Transmittance", booleanNode) 
+	AddNode("Grating period", realNode) 
+	SetNodeLimits("Grating period", 100, 100000)
+	AddNode("Peak width", realNode) 
+	AddNode("Range start", integerNode) 
+	SetNodeLimits("Range start", 200, 3000)
+	AddNode("Range stop", integerNode) 
+	SetNodeLimits("Range stop", 200, 3000)
+End Function
+
+Function CreateIncidentAnglesNodes()
+    AddNode("First incidence",integerNode)
+    SetNodeLimits("First incidence", -90, 91)
+	AddNode("Second incidence", integerNode)
+	SetNodeLimits("Second incidence", -90, 91)
+	AddNode("Third incidence", integerNode)
+    SetNodeLimits("Third incidence", -90, 91)
+	AddNode("Fourth incidence", integerNode)
+	SetNodeLimits("Fourth incidence", -90, 91)
+	AddNode("Fifth incidence", integerNode)
+	SetNodeLimits("Fifth incidence", -90, 91)
+	AddNode("Sixth incidence", integerNode)
+	SetNodeLimits("Sixth incidence", -90, 91)
+	AddNode("Seventh incidence", integerNode)
+	SetNodeLimits("Seventh incidence", -90, 91)
+	AddNode("Eighth incidence", integerNode)
+	SetNodeLimits("Eighth incidence", -90, 91)
+	AddNode("Ninth incidence", integerNode)
+	SetNodeLimits("Ninth incidence", -90, 91)
+End Function
+
+Function CreateMeasurementDirectory(MeasurementName)
+	AddNode("Parent Directory",0)
+	ParentDirectory = "F:\"+CStr(Format(Date(), "YYYYMMDD"))
+	Setval("Parent Directory", parentDirectory)
+    On Error Resume Next
+    MkDir ParentDirectory
+    
+    AddNode("Directory",0)
+	ChildDirectory = Getval("Parent Directory") + "\" + MeasurementName + CStr(Format(Time(), "HH_mm"))
+	Setval("Directory", ChildDirectory)
+    On Error Resume Next
+    MkDir ChildDirectory
+End Function
+
+Function DefaultingTransmissionReflexionPolarisation()
+	If GetVal("Reflectance") = False And GetVal("Transmittance") = False Then
+        Setval("Reflectance",True) 
+        Setval("Transmittance", True)
+    End If
+    If GetVal("S-Polarization") = False And GetVal("P-Polarization") = False Then
+        Setval("S-Polarization",True) 
+        Setval("P-Polarization", True)
+    End If
+End Function
+
+Function PrinAndArchiveUserSettings()
+        SetupInst ' sendig relevant parameters to the hardware
+    Lprint(CStr(GetVal("Range start"))+"_"+CStr(GetVal("Range stop"))+"_"+CStr(GetVal("NIR interval")))
+
+	LPrint("####################################    Settings       ######################################")
+	
+	LPrint("--------------------------------------------------------    General        ----------------------------------------------------------------")
+	LPrint("Reflectance:                  ",GetVal("Reflectance"),"                                                Beam mode:                      ",GetVal("Beam Mode"))
+	LPrint("Transmittance:               ",GetVal("Transmittance"),"                                                 Slit height:                         ",GetVal("Slit height"))
+	LPrint("S polarization:                ",GetVal("S-Polarization"),"                                                 P polarization:                   ",GetVal("P-Polarization"))
+	LPrint("Detector changeover:   ",GetVal("Detector changeover")," nm                                            Source changeover:         ",GetVal("Source changeover"),"nm")
+    LPrint("Grating changeover:      ",GetVal("Grating changeover")+"  nm")
+    LPrint("Scan start:                     ",GetVal("Range start")+" nm                                                  Scan Stop:                     ",GetVal("Range Stop"), " nm")
+    
+
+	LPrint("--------------------------------------------------------     UV-NIR       ----------------------------------------------------------------")
+	LPrint("UV slit width        ",GetVal("UVVIS slit width"), "                                           NIR slit width       ",GetVal("NIR slit width"))
+	LPrint("UV averaging      ",CStr(GetVal("UVVIS averaging")*0.033)," s                                   NIR averaging      ",CStr(GetVal("NIR averaging")*0.033)+" s")
+	LPrint("UV interval          ",GetVal("UVVIS interval"),"  nm                                     NIR interval          ",GetVal("NIR interval")+" nm")
+	
+	LPrint("--------------------------------------------     Diffraction specific settings       -------------------------------------------------")
+	LPrint("Grating period (nm):                "+GetVal("Grating period"))
+	LPrint("Peak width (nm):                    "+GetVal("Peak width"))
+	Lprint("Difraction peaks to be scanned:         0    " + Getval("Zeroth"))
+	LPrint("                                                           -1   " + Getval("mFirst") + "                                   1   " + Getval("First"))
+	LPrint("                                                           -2   " + Getval("mSecond") + "                                   2   " + Getval("Second"))
+	LPrint("                                                           -3   " + Getval("mThird") + "                                   3   " + Getval("Third"))
+	LPrint("                                                           -4   " + Getval("mFourth") + "                                   4   " + Getval("Fourth"))
+	LPrint("                                                           -5   " + Getval("mFifth") + "                                   5   " + Getval("Fifth"))
+	LPrint("                                                           -6   " + Getval("mSixth") + "                                   6   " + Getval("Sixth"))
+	LPrint("                                                           -7   " + Getval("mSeventh") + "                                   7   " + Getval("Seventh"))
+	
+	LPrint(" ")
+	
+		lprint("You chose to scan at these incident angles (in degrees):")
+		If howMany = 0 Then
+		     ReDim Preserve Incidents(0)
+		     Setval("First incidence",0)
+	        Incidents(howMany) = 0
+	        Lprint(" Defaulted to 0")
+	    End If 
+      	For i  = 0 To howMany-1
+    	    lprint(Incidents(i))
+	    Next i
+	Lprint(" ")
+	
+	    ArchiveReport(Getval("Directory")  + "\" + Getval("Filename") + "_report_time_" +  Format(Time(), "HH_mm_ss") + ".txt")
+End Function
+
+Function TimeExpectedFunc()
+	timeExpected  = 0 
+	zerothP = Getval("Zeroth")
+    firstP = Getval("First")
+    secondP = Getval("Second")
+    thirdP= Getval("Third")
+    forthP = Getval("Fourth")
+    fifthP = Getval("Fifth")
+    sixthP= Getval("Sixth")
+    seventhP = Getval("Seventh")
+    mfirstP = Getval("mFirst")
+    msecondP = Getval("mSecond")
+    mthirdP= Getval("mThird")
+    mforthP = Getval("mFourth")
+    mfifthP = Getval("mFifth")
+    msixthP= Getval("mSixth")
+    mseventhP = Getval("Seventh")
+	Orders = Array(CSng(mSeventhP)*-1, CSng(mSixthP)*-1, CSng(mFifthP)*-1, CSng(mFourthP)*-1, CSng(mThirdP)*-1, CSng(mSecondP)*-1, CSng(mFirstP)*-1,CSng(zerothP)*-1, CSng(firstP)*-1, CSng(secondP)*-1, CSng(thirdP)*-1, CSng(forthP)*-1, CSng(fifthP)*-1, CSng(sixthP)*-1, CSng(seventhP)*-1)
+	
+	incidentAngles = IncidentAnglesFunc()
+End Function
+
+Function IncidentAnglesFunc()
+    '#######       returns array of incident angles to scan through and through which for loop can iterate  #######'
+    IncidentInputs = Array(Getval("First incidence"), Getval("Second incidence"), Getval("Third incidence"), Getval("Fourth incidence"), Getval("Fifth incidence"), Getval("Sixth incidence"), Getval("Seventh incidence"), Getval("Eighth incidence"), Getval("Ninth incidence"))
+	howMany = 0
+	Dim C, Incidents  ()
+	For x = 0 To 8
+	    If IncidentInputs(x) = "91" Then
+	    Else
+	        ReDim Preserve Incidents(howMany)
+	        Incidents(howMany) =   CInt(IncidentInputs(x))    'changing the sign because of the device setup
+	        howMany = howMany +1
+	    End If 
+	Next x
+	IncidentAnglesFunc = Incidents
+End Function
+
+Function RoundDown(x)
+    If (x - CInt(x)) < 0 Then
+        RoundDown  = CInt(x)-1
+    Else 
+        RoundDown = CInt(x)
+    End If 
+End Function
+
+ Function MeasureLengthVISNIR()
+    '######          returning how long the measurement log is         #########'
+    If CSng(GetVal("Range start")) < 720 Then
+        NIRLength = (720 - CSng(GetVal("Range Start"))) / CSng(GetVal("UVVIS interval"))  
+    Else 
+        NIRLength = 0
+    End If
+    
+    If CSng(GetVal("Range stop")) > 720 Then
+        VISLength = (CSng(GetVal("Range Stop")) - 720) / CSng(GetVal("NIR interval"))  
+    Else 
+        VISLength = 0
+    End If
+    
+    AddNode("Measured Length", 2)
+    Setval("Measured Length",CSng(NIRLength + VISLength))
+    
+End Function
+
+
+
+

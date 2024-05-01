@@ -1,0 +1,9 @@
+Sub main
+	AddButton("Setup",     CStr(CurDir)  + "\Setup.adl")
+	AddButton("Baseline", CStr(CurDir)  + "\DoBaseline.adl") 
+	AddButton("Measure", CStr(CurDir)  + "\Measure.adl") 
+End Sub
+
+
+
+

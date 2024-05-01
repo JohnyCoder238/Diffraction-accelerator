@@ -1,0 +1,179 @@
+Dim beginWavelegth
+Dim endWavelength
+Dim startw
+Dim stopw
+Dim IncidentAngleCount
+
+Sub main   
+    StartPrint       'clearing the output
+	
+	DiffractionOrdersList = GetDiffractionOrdersList()
+	IncidentAnglesList = GetIncidentAnglesList()
+	
+	MsgBox "Wait until UMA detector angle is at approximately -45 deg, then load the sample into the sample compartment"
+	startw = Getval("Range start")
+	stopw = Getval("Range stop")
+
+	For i=0 To IncidentAngleCount-1
+	incidentAngle = IncidentAnglesList(i)
+        If getval("Transmittance") Then
+            SetVal("Y Mode", PercentT_YMode)
+            RT = "trans"
+            For m = 0 To 14
+                If DiffractionOrdersList(m) = 1 Then
+                     ScanThisOrder(m-7, Getval("Range start"), Getval("Range stop"), incidentAngle, RT)
+                End If
+            Next m
+         End If
+         
+         
+        If getval("Reflectance") Then
+	        SetVal("Y Mode", PercentR_YMode)
+	        RT = "reflx"
+	        For m = 0 To 14
+                If DiffractionOrdersList(m) = 1 Then
+                     ScanThisOrder(m-7, Getval("Range start"), Getval("Range stop"), incidentAngle, RT)
+                End If
+            Next m
+        End If 
+    Next i
+    ResetUma
+End Sub
+
+Function ScanThisOrder(m, startWave, stopWave, incAng, RT)
+    '##### scans all that is to scan in the designated order with parameters given in setup  #####
+            Lprint("Order "+CStr(m))
+            grating = Getval("Grating period") 
+            peakWidth = Getval("Peak width")
+            upperLimit = 3000     'given by the instrument limitations
+            lowerLimit = 200        'given by the instrument limitations
+            
+            If m = 0 Then
+                zidentity = "inc_angle_" + CStr(incAng) + "_order_"  + CStr(m) + "_dif_angle_" + CStr(2*incAng) + "_wave_" + CStr(CInt(startWave)) + "-" + CStr(CInt(stopWave)) +  "_period_" + CStr(grating) + "_" +  Format(Date(), "DD-MM-YYYY") +"time_" +  Format(Time(), "HH_mm_ss")
+	            If RT = "trans" Then zangle = 180 Else zangle =2*incAng
+                If getval("S-Polarization") Then
+	                SingleScan(startWave, stopWave, zangle , "S", 0, incAng, zidentity, m, RT)
+                End If 
+                If getval("P-Polarization") Then
+	                SingleScan(startWave, stopWave, zangle, "P", 90, incAng, zidentity, m, RT)
+                End If
+            Else
+
+            centerWave = startWave  + peakWidth/2
+                 While centerWave < stopWave
+                        If Abs(Sin(incAng/180*pi) + m*centerWave/grating) > 1 Then    'checking whether the mode is real
+                            Cprint("Evanescent")
+                        Else
+                           difAng = ArcSine(Sin(incAng/180*pi) + m*centerWave/grating)
+                           difAng = GetTrans(difAng, RT)             'corection for transmission
+                           beginWave = centerWave - peakWidth/2
+                           endWave = centerWave + peakWidth/2
+                        
+                            If beginWave < lowerLimit Then beginWave = lowerLimit
+	                        If beginWave > upperLimit Then beginWave = upperLimit
+	                        If endWave < lowerLimit Then endWave = upperLimit
+	                        If endWave > upperLimit Then endWave = upperLimit
+	                    
+	                        difAng = Round(difAng,2)
+	                        identity = "inc_angle_" + CStr(incAng) + "_order_"  + CStr(m) + "_dif_angle_" + CStr(difAng) + "_wave_" + CStr(CInt(beginWave)) + "-" + CStr(CInt(endWave)) +  "_period_" + CStr(grating) + "_" +  Format(Date(), "DD-MM-YYYY") +"time_" +  Format(Time(), "HH_mm_ss")
+	                        difAng = difAng + incAng
+	                        If difAng > 180 Then difAng = 360 - difAng
+	                        If difAng < -180 Then difAng = 360 + difAng
+	                    
+	                        GraphScales("Graph",CInt(startw),0,CInt(stopw),1) 'xmin, ymin, xmax, ymax
+	                        If getval("S-Polarization") Then
+	                            SingleScan(beginWave, endWave, difAng, "S", 0, incAng, identity, m, RT)
+                            End If 
+                            If getval("P-Polarization") Then
+	                            SingleScan(beginWave, endWave, difAng, "P", 90, incAng, identity, m, RT)
+                            End If
+                        End If
+                        centerWave = centerWave + peakWidth
+                 Wend
+            End If
+End Function
+
+Function GetTrans(an ,RT)
+    If RT = "trans" Then     ' recalculating in case of transmission
+	    If an < 0 Then an = -180-an Else an = 180-an
+	    GetTrans  = an
+	Else
+	    GetTrans  = an
+	End If
+End Function
+
+Function Round(num, places)
+    num = num * 10^places
+    num = CLng(num)
+    num = num / 10^places
+    Round = num
+End Function
+
+Function SingleScan(beginWave, endWave, difAng, SP, polarizerAngle, incAng, identity, m, RT)
+    '########        Scanning given wavelength range for a given polarization and angle        ########'
+    SetCTMXLabel(SP+"polar","Wavelength (nm)")
+    SetCTMYLabel(SP+"polar","%"+RT)
+	If Abs(CSng(difAng)) < 10  Then       'avoiding crashing to angles below +/- 10
+	    Lprint("UMA detector would crash for peak of order " + CStr(m) + " in range of " +CStr(beginWave) + "nm and " + CStr(endWave) +"nm " + "on incidence at " + CStr(incAng) + " and difracting at "  +  CStr(difAng))
+    Else
+        Cprint("Scanning "+RT+" range " + CStr(CInt(beginWave)) + "-" + CStr(CInt(endWave)) + "nm for peak of order " + CStr(m) + " at angle " + CStr(angle)+ " in "+ SP + " polarization" + " with incident angle at " + CStr(incAng) + " and difracting at "  +  CStr(difAng))
+        SetPolarizerAndUMAAngles(CSng(polarizerAngle),CInt(incAng), CSng(difAng))    '     polarizer,sample,detector
+        CollectandGraph(SP+"_polar","Graph",CInt(beginWave),CInt(endWave),0) 
+        
+        CorrectedCtm$ = CTMOP(SP+"_polar","/", SP +"_polarization_baseline_" + CStr(Getval("Measured Length")))
+        ChangeCtmName(CorrectedCtm$, SP + "_polar_" + RT+ "_" + identity)
+        Plot(SP + "_polar_" + RT+ "_" + identity)
+        SaveAs(Getval("Directory") + "\" + SP + "_polar_" + RT+ "_" + identity +"_" + ".csv",7)
+    End If
+End Function
+
+Function ArcSine(x) ' in degrees
+    If x = 1 Then 
+        ArcSine = 90
+    ElseIf x = -1 Then
+        ArcSine = -90
+    Else 
+        result = Atn(x/(1-x^2)^0.5)
+        ArcSine = result/pi*180
+    End If 
+End Function
+
+Function GetIncidentAnglesList()
+    IncidentInputs = Array(Getval("First incidence"), Getval("Second incidence"), Getval("Third incidence"), Getval("Fourth incidence"), Getval("Fifth incidence"), Getval("Sixth incidence"), Getval("Seventh incidence"), Getval("Eighth incidence"), Getval("Ninth incidence"))
+	IncidentAngleCount = 0
+	Dim C, Incidents  ()
+	For x = 0 To 8
+	    If IncidentInputs(x) = "91" Then
+	    Else
+	        ReDim Preserve Incidents(IncidentAngleCount)
+	        Incidents(IncidentAngleCount) =   CInt(IncidentInputs(x)) 
+	        IncidentAngleCount = IncidentAngleCount +1
+	    End If 
+	Next x
+
+	lprint("You chose to scan at these incident angles (in degrees):")
+    For i  = 0 To IncidentAngleCount-1
+    	    lprint(Incidents(i))
+	Next i
+    GetIncidentAnglesList = Incidents
+End Function
+
+Function GetDiffractionOrdersList()
+    zerothP = Getval("Zeroth")
+    firstP = Getval("First")
+    secondP = Getval("Second")
+    thirdP= Getval("Third")
+    forthP = Getval("Fourth")
+    fifthP = Getval("Fifth")
+    sixthP= Getval("Sixth")
+    seventhP = Getval("Seventh")
+    mfirstP = Getval("mFirst")
+    msecondP = Getval("mSecond")
+    mthirdP= Getval("mThird")
+    mforthP = Getval("mFourth")
+    mfifthP = Getval("mFifth")
+    msixthP= Getval("mSixth")
+    mseventhP = Getval("Seventh")
+	GetDiffractionOrdersList = Array(CSng(mSeventhP)*-1, CSng(mSixthP)*-1, CSng(mFifthP)*-1, CSng(mFourthP)*-1, CSng(mThirdP)*-1, CSng(mSecondP)*-1, CSng(mFirstP)*-1,CSng(zerothP)*-1, CSng(firstP)*-1, CSng(secondP)*-1, CSng(thirdP)*-1, CSng(forthP)*-1, CSng(fifthP)*-1, CSng(sixthP)*-1, CSng(seventhP)*-1)
+End Function
+

@@ -1,0 +1,19 @@
+Sub main
+	MsgBox "Clear the sample compartment for a baseline collection"  
+	SetVal("Y Mode", PercentT_YMode)   ' important - otherwise baseline doesnt work for some reason
+	If getval("S-Polarization") Then  MeasurePolarisation("S", 0) 
+	If getval("P-Polarization") Then  MeasurePolarisation("P", 90)
+	ResetUma
+	MsgBox "Baseline done"
+End Sub
+
+Function MeasurePolarisation(PolarisationChar, PolarisationAngle)
+    '######          measuring polarisations         #########'
+    MeasurementLength = Getval("Measured Length")
+    Cprint("Scanning range baseline for "+ PolarisationChar +" polarization")
+	SetPolarizerAndUMAAngles(CSng(PolarisationAngle),0, 180)
+    CollectAndGraph(PolarisationChar +"_polarization_baseline_" + CStr(MeasurementLength),"Transmission_grph",CSng(GetVal("Range Start")), CSng(GetVal("Range Stop")),0)
+    SaveAs(Getval("Directory") + "\" + CStr(PolarisationChar) + "_polar_" + CStr(MeasurementLength) +"_" + ".csv",7)
+End Function
+ 
+
